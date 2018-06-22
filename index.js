@@ -55,15 +55,17 @@ class PluginBalanceWrapper extends EventEmitter {
 
     this.balance = this.balance.minus(prepare.amount)
 
+    // Check if we need to actually send money before this Prepare will be accepted
     const settleAmount = this.settleTo.minus(this.balance)
     if (settleAmount.isGreaterThan(0) && this.balance.isLessThanOrEqualTo(this.settleThreshold)) {
       debug(`sending ${settleAmount} before sending ILP Prepare for amount ${prepare.amount}`)
       try {
         await this.sendMoney(settleAmount.toString())
       } catch (err) {
-        debug('unable to send money. sending the ILP Prepare packet anyway', err)
+        debug(`unable to send ${settleAmount}. sending the ILP Prepare packet anyway`, err)
       }
     }
+
     const response = await this.plugin.sendData(data)
 
     // Undo effect on balance if the packet is rejected
@@ -95,6 +97,7 @@ class PluginBalanceWrapper extends EventEmitter {
       return this.dataHandler(data)
     }
 
+    // Check if this prepare packet would put us over the acceptable limit
     if (this.balance.plus(prepare.amount).isGreaterThan(this.maximum)) {
       debug(`insufficient balance to handle packet of amount ${prepare.amount}, rejecting with a T04 error. current balance: ${this.balance}, maximum: ${this.maximum}`)
       return IlpPacket.serializeIlpReject({
@@ -112,6 +115,7 @@ class PluginBalanceWrapper extends EventEmitter {
     if (response[0] === IlpPacket.Type.TYPE_ILP_REJECT) {
       this.balance = this.balance.minus(prepare.amount)
     }
+
     return response
   }
 
