@@ -1,6 +1,7 @@
 const BigNumber = require('bignumber.js')
 const IlpPacket = require('ilp-packet')
 const debug = require('debug')('ilp-plugin-balance-wrapper')
+const EventEmitter = require('events')
 
 function defaultDataHandler () {
   throw new Error('No data handler registered')
@@ -10,11 +11,14 @@ function defaultMoneyHandler () {
   throw new Error('No money handler registered')
 }
 
-class PluginBalanceWrapper {
+class PluginBalanceWrapper extends EventEmitter {
   constructor ({ plugin, settleThreshold, settleTo, maximum }) {
     this.plugin = plugin
     this.plugin.registerDataHandler(this._handleData.bind(this))
     this.plugin.registerMoneyHandler(this._handleMoney.bind(this))
+    this.plugin.on('connect', () => this.emit('connect'))
+    this.plugin.on('disconnect', () => this.emit('disconnect'))
+    this.plugin.on('error', (err) => this.emit('error', err))
 
     this.moneyHandler = defaultMoneyHandler
     this.dataHandler = defaultDataHandler
@@ -66,10 +70,12 @@ class PluginBalanceWrapper {
   async sendMoney (amount) {
     await this.plugin.sendMoney(amount)
     this.balance = this.balance.plus(amount)
+    debug(`sent ${amount}. balance is now: ${this.balance}`)
   }
 
   async _handleMoney (amount) {
     this.balance = this.balance.plus(amount)
+    debug(`got ${amount}. balance is now: ${this.balance}`)
 
     return this.moneyHandler(amount)
   }
@@ -115,3 +121,4 @@ class PluginBalanceWrapper {
 
 exports.PluginBalanceWrapper = PluginBalanceWrapper
 exports.default = PluginBalanceWrapper
+
