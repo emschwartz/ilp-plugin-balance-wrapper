@@ -64,7 +64,14 @@ class PluginBalanceWrapper extends EventEmitter {
         debug('unable to send money. sending the ILP Prepare packet anyway', err)
       }
     }
-    return this.plugin.sendData(data)
+    const response = await this.plugin.sendData(data)
+
+    // Undo effect on balance if the packet is rejected
+    if (response[0] === IlpPacket.Type.TYPE_ILP_REJECT) {
+      this.balance = this.balance.plus(prepare.amount)
+    }
+
+    return response
   }
 
   async sendMoney (amount) {
@@ -99,7 +106,13 @@ class PluginBalanceWrapper extends EventEmitter {
       })
     }
 
-    return this.dataHandler(data)
+    const response = await this.dataHandler(data)
+
+    // Undo effect on balance is packet is rejected
+    if (response[0] === IlpPacket.Type.TYPE_ILP_REJECT) {
+      this.balance = this.balance.minus(prepare.amount)
+    }
+    return response
   }
 
   registerDataHandler (handler) {
