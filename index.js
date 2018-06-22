@@ -2,14 +2,22 @@ const BigNumber = require('bignumber.js')
 const IlpPacket = require('ilp-packet')
 const debug = require('debug')('ilp-plugin-balance-wrapper')
 
+function defaultDataHandler () {
+  throw new Error('No data handler registered')
+}
+
+function defaultMoneyHandler () {
+  throw new Error('No money handler registered')
+}
+
 class PluginBalanceWrapper {
   constructor ({ plugin, settleThreshold, settleTo, maximum }) {
     this.plugin = plugin
     this.plugin.registerDataHandler(this._handleData.bind(this))
     this.plugin.registerMoneyHandler(this._handleMoney.bind(this))
 
-    this.moneyHandler = () => {}
-    this.dataHandler = () => {}
+    this.moneyHandler = defaultMoneyHandler
+    this.dataHandler = defaultDataHandler
 
     this.settleThreshold = new BigNumber(settleThreshold || 0)
     this.settleTo = new BigNumber(settleTo || 0)
@@ -23,6 +31,10 @@ class PluginBalanceWrapper {
 
   async disconnect () {
     return this.plugin.disconnect()
+  }
+
+  isConnected () {
+    return this.plugin.isConnected()
   }
 
   async sendData (data) {
@@ -82,6 +94,14 @@ class PluginBalanceWrapper {
 
   registerMoneyHandler (handler) {
     this.moneyHandler = handler
+  }
+
+  deregisterDataHandler () {
+    this.dataHandler = defaultDataHandler
+  }
+
+  deregisterMoneyHandler () {
+    this.moneyHandler = defaultMoneyHandler
   }
 }
 
