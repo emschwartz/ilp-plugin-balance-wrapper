@@ -25,6 +25,10 @@ class PluginBalanceWrapper {
     this.balance = new BigNumber(0)
   }
 
+  static get version () {
+    return 2
+  }
+
   async connect () {
     return this.plugin.connect()
   }
