@@ -51,10 +51,14 @@ class PluginBalanceWrapper {
 
     this.balance = this.balance.minus(prepare.amount)
 
-    if (this.balance.isLessThanOrEqualTo(this.settleThreshold)) {
-      const settleAmount = this.settleTo.minus(this.balance)
+    const settleAmount = this.settleTo.minus(this.balance)
+    if (settleAmount.isGreaterThan(0) && this.balance.isLessThanOrEqualTo(this.settleThreshold)) {
       debug(`sending ${settleAmount} before sending ILP Prepare for amount ${prepare.amount}`)
-      await this.sendMoney(settleAmount)
+      try {
+        await this.sendMoney(settleAmount.toString())
+      } catch (err) {
+        debug('unable to send money. sending the ILP Prepare packet anyway', err)
+      }
     }
     return this.plugin.sendData(data)
   }
